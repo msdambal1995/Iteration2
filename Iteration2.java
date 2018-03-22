@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,12 +19,15 @@ import org.eclipse.jdt.core.JavaCore;
  * 1) takes a pathname to indicate a directory or JAR file of interest,
  * 2) finds the declarations of all types within that directory (recursively) or JAR file, and
  * 3) finds the references to all types within that directory (recursively) or JAR file
+ * Extra Notes:
+ *    Input directory or JAR file should be provided as a command line argument
+ *    This program only works with directories and JAR files
  * @author Robert Fiker and Hamzah Umar.
- * @version 2.0
+ * @version 3.0
  */
 public class Iteration2 {
 	
-	static String inputDirectory;
+	static String inputPathname;
 	static HashMap<String, Integer> decDictionary = new HashMap<String, Integer>();
 	static HashMap<String, Integer> refDictionary = new HashMap<String, Integer>();
 	
@@ -33,92 +37,81 @@ public class Iteration2 {
 	 * @return Nothing
 	 * @throws IOException
 	 */
-	public static void main(String[] args) throws IOException {
-		inputDirectory = args[0];
-		parseFilesInDir(inputDirectory);
+	public static void main(String[] args) {
+		if (args.length != 1) {
+			System.out.println("You must enter exactly one command line argument.");
+			System.exit(0);
+		}
+		inputPathname = args[0];
+		try {
+			findFiles(inputPathname);
+		}
+		catch(FileNotFoundException fnfe) {
+			System.out.println("Sorry, pathname must indicate either an existing directory or an existing JAR file");
+		}
+		catch (IOException ioe){
+			System.out.println("Error occred while retreiving directory/jar file. Please check your input");
+		}
 		System.out.println("Declarations: "+decDictionary.toString());
 		System.out.println("References: "+refDictionary.toString());
 	}
 	
 	/**
-	 * Method which parses all Java files within a directory (recursively)
-	 * @param directory The directory containing the files that need to be parsed
+	 * Method which parses all Java files within a directory (recursively) or a JAR file
+	 * @param pathname The directory or JAR file containing the .java files that need to be parsed
 	 * @return Nothing
 	 * @throws IOException
 	 */
-	public static void parseFilesInDir(String directory) throws IOException{
-		File root = new File(directory);
-		InputStream stream = null;
-		
+	public static void findFiles(String pathname) throws IOException{
+		//check if input pathname is a directory
+		File root = new File(pathname);
 		if (root.isDirectory()) {
 	        File[] list = root.listFiles();
 	
-	        if (list == null) return;
+	        if (list == null) {
+	        	return;
+	        }
 	        
-	        String filepath = null;
-	
 	        for (File f : list) {
+	        	//if a directory is found within the original directory, recursively search the new directory
 	            if (f.isDirectory()) {
-	                parseFilesInDir(f.getAbsolutePath());
+	                findFiles(f.getAbsolutePath());
 	            }
 	            else {
-	            	filepath = f.getAbsolutePath();
-	                parse(readFileToString(filepath));
+	            	//only parse .java files
+	            	if (f.getName().endsWith(".java")) {
+	            		parse(readFileToString(f.getAbsolutePath()));
+	            	}
 	            }
-	        }
+	        } 
 		}
-		else {
-			System.out.println("Here");
-			System.out.println(directory);
-			ZipFile zipFile = new ZipFile(directory);
+		//if not, check if it is a JAR or ZIP file
+		else if (pathname.endsWith(".jar") || pathname.endsWith(".zip")){
+			ZipFile zipFile = new ZipFile(pathname);
 
 		    Enumeration<? extends ZipEntry> entries = zipFile.entries();
 		    
+		    //make an ArrayList to store all .java zip entries
 		    ArrayList<ZipEntry> myArray = new ArrayList<ZipEntry>();
 		    while(entries.hasMoreElements()){
 		        ZipEntry entry = entries.nextElement();
-		        String entryName = entry.getName();
-		        if (entryName.endsWith(".java")){
+		        if (entry.getName().endsWith(".java")){
 		        	myArray.add(entry);
 		        }
 		    }
 		    
 		    for (ZipEntry entry: myArray) {
-		    	
-		    	System.out.println(entry.toString());
-		        stream = zipFile.getInputStream(entry);
-		        
-		    	BufferedReader br = null;
-				StringBuilder sb = new StringBuilder();
-
-				String line;
-				try {
-
-					br = new BufferedReader(new InputStreamReader(stream));
-					while ((line = br.readLine()) != null) {
-						sb.append(line);
-					}
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				} finally {
-					if (br != null) {
-						try {
-							br.close();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-				}
-
-				parse(sb.toString());
+				parse(readZipEntryToString(entry, zipFile));
 		    }
 		}
-
+		//if not, print error message
+		else {
+			System.out.println("Sorry, pathname must indicate either an existing directory or an existing JAR file");
+		}
 	}
 	
 	/**
-	 * Method which reads a file, and converts it to a string
+	 * Method which reads a file from normal directories, and converts it to a string
 	 * @param filePath This indicates the file path of the file to be read
 	 * @return String This returns the string that has been created
 	 * @throws IOException
@@ -134,10 +127,44 @@ public class Iteration2 {
 			fileData.append(readData);
 			buf = new char[1024];
 		}
- 
 		reader.close();
- 
 		return  fileData.toString();	
+	}
+	
+	/**
+	 * Method which reads a file from JARS and ZIPS, and converts it to a string
+	 * @param entry This indicates the file that is to be read
+	 * @param zFile This indicates the JAR or ZIP file that is being used
+	 * @return String This returns the string that has been created
+	 * @throws IOException
+	 */
+	public static String readZipEntryToString(ZipEntry entry, ZipFile zFile) throws IOException {
+		InputStream stream = null;
+		stream = zFile.getInputStream(entry);
+        
+    	BufferedReader br = null;
+		StringBuilder sb = new StringBuilder();
+
+		String line;
+		try {
+
+			br = new BufferedReader(new InputStreamReader(stream));
+			while ((line = br.readLine()) != null) {
+				sb.append(line+"\n");
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (br != null) {
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return sb.toString();
 	}
 	
 	/**
@@ -218,7 +245,7 @@ public class Iteration2 {
 				else {
 					refDictionary.put(qualifiedName, 1);
 				}
-				return false;
+				return true;
 			}
 			
 			// COUNT MARKER ANNOTATION TYPE REFERENCES 
@@ -261,12 +288,13 @@ public class Iteration2 {
 		
 	}
 	
+	// Encapsulation methods
 	public static String getInputDirectory() {
-		return inputDirectory;
+		return inputPathname;
 	}
 	
 	public static void setInputDirectory(String inputDirectory) {
-		Iteration2.inputDirectory = inputDirectory;
+		Iteration2.inputPathname = inputDirectory;
 	}
 	
 	public static HashMap<String, Integer> getRefDictionary(){
