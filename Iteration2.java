@@ -23,10 +23,7 @@ import org.eclipse.jdt.core.JavaCore;
  */
 public class Iteration2 {
 	
-	static String inputType;
 	static String inputDirectory;
-	static int declarations = 0;
-	static int references = 0;
 	static HashMap<String, Integer> decDictionary = new HashMap<String, Integer>();
 	static HashMap<String, Integer> refDictionary = new HashMap<String, Integer>();
 	
@@ -264,36 +261,20 @@ public class Iteration2 {
 		
 	}
 	
-	public static String getInputType() {
-		return inputType;
-	}
-
-	public static void setInputType(String inputType) {
-		Iteration2.inputType = inputType;
-	}
-
-	public static int getDeclarations() {
-		return declarations;
-	}
-
-	public static void setDeclarations(int declarations) {
-		Iteration2.declarations = declarations;
-	}
-
-	public static int getReferences() {
-		return references;
-	}
-
-	public static void setReferences(int references) {
-		Iteration2.references = references;
-	}
-
 	public static String getInputDirectory() {
 		return inputDirectory;
 	}
 	
 	public static void setInputDirectory(String inputDirectory) {
 		Iteration2.inputDirectory = inputDirectory;
+	}
+	
+	public static HashMap<String, Integer> getRefDictionary(){
+		return refDictionary;
+	}
+	
+	public static HashMap<String, Integer> getDecDictionary(){
+		return decDictionary;
 	}
 	
 }
