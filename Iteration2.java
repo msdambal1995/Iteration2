@@ -1,12 +1,15 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.JavaCore;
 
@@ -16,7 +19,7 @@ import org.eclipse.jdt.core.JavaCore;
  * 2) finds the declarations of all types within that directory (recursively) or JAR file, and
  * 3) finds the references to all types within that directory (recursively) or JAR file
  * @author Robert Fiker and Hamzah Umar.
- * @version 1.0
+ * @version 2.0
  */
 public class Iteration2 {
 	
@@ -26,8 +29,6 @@ public class Iteration2 {
 	static int references = 0;
 	static HashMap<String, Integer> decDictionary = new HashMap<String, Integer>();
 	static HashMap<String, Integer> refDictionary = new HashMap<String, Integer>();
-//	static ArrayList<String> decList = new ArrayList<String>();
-//	static ArrayList<String> refList = new ArrayList<String>();
 	
 	/**
 	 * This is the main method
@@ -37,14 +38,88 @@ public class Iteration2 {
 	 */
 	public static void main(String[] args) throws IOException {
 		inputDirectory = args[0];
-		inputType = args[1];
 		parseFilesInDir(inputDirectory);
 		System.out.println("Declarations: "+decDictionary.toString());
 		System.out.println("References: "+refDictionary.toString());
-		
 	}
 	
+	/**
+	 * Method which parses all Java files within a directory (recursively)
+	 * @param directory The directory containing the files that need to be parsed
+	 * @return Nothing
+	 * @throws IOException
+	 */
+	public static void parseFilesInDir(String directory) throws IOException{
+		File root = new File(directory);
+		InputStream stream = null;
+		
+		if (root.isDirectory()) {
+	        File[] list = root.listFiles();
+	
+	        if (list == null) return;
+	        
+	        String filepath = null;
+	
+	        for (File f : list) {
+	            if (f.isDirectory()) {
+	                parseFilesInDir(f.getAbsolutePath());
+	            }
+	            else {
+	            	filepath = f.getAbsolutePath();
+	                parse(readFileToString(filepath));
+	            }
+	        }
+		}
+		else {
+			System.out.println("Here");
+			System.out.println(directory);
+			ZipFile zipFile = new ZipFile(directory);
 
+		    Enumeration<? extends ZipEntry> entries = zipFile.entries();
+		    
+		    ArrayList<ZipEntry> myArray = new ArrayList<ZipEntry>();
+		    while(entries.hasMoreElements()){
+		        ZipEntry entry = entries.nextElement();
+		        String entryName = entry.getName();
+		        if (entryName.endsWith(".java")){
+		        	myArray.add(entry);
+		        }
+		    }
+		    
+		    for (ZipEntry entry: myArray) {
+		    	
+		    	System.out.println(entry.toString());
+		        stream = zipFile.getInputStream(entry);
+		        
+		    	BufferedReader br = null;
+				StringBuilder sb = new StringBuilder();
+
+				String line;
+				try {
+
+					br = new BufferedReader(new InputStreamReader(stream));
+					while ((line = br.readLine()) != null) {
+						sb.append(line);
+					}
+
+				} catch (IOException e) {
+					e.printStackTrace();
+				} finally {
+					if (br != null) {
+						try {
+							br.close();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+
+				parse(sb.toString());
+		    }
+		}
+
+	}
+	
 	/**
 	 * Method which reads a file, and converts it to a string
 	 * @param filePath This indicates the file path of the file to be read
@@ -66,33 +141,6 @@ public class Iteration2 {
 		reader.close();
  
 		return  fileData.toString();	
-	}
-	
-	/**
-	 * Method which parses all Java files within a directory (recursively)
-	 * @param directory The directory containing the files that need to be parsed
-	 * @return Nothing
-	 * @throws IOException
-	 */
-	public static void parseFilesInDir(String directory) throws IOException{
-		File root = new File(directory);
-        File[] list = root.listFiles();
-
-        if (list == null) return;
-        
-        String filepath = null;
-
-        for (File f : list) {
-            if (f.isDirectory()) {
-            	//System.out.println( "Dir:" + f.getAbsoluteFile());
-                parseFilesInDir(f.getAbsolutePath());
-            }
-            else {
-            	filepath = f.getAbsolutePath();
-                //System.out.println( "File:" + f.getAbsoluteFile());
-                parse(readFileToString(filepath));
-            }
-        }
 	}
 	
 	/**
@@ -128,129 +176,90 @@ public class Iteration2 {
 		// visit methods
 		cu.accept(new ASTVisitor() {
 			
-//			public boolean visit(PrimitiveType node) {
-//				ITypeBinding myBinding = node.resolveBinding();
-//				String qualifiedName = myBinding.getQualifiedName();
-////				Type myType = node.getType();
-//				System.out.println(qualifiedName);
-//				return true;
-//			}
-//			
-//			public boolean visit(NameQualifiedType node) {
-//				ITypeBinding myBinding = node.resolveBinding();
-//				String qualifiedName = myBinding.getQualifiedName();
-////				Type myType = node.getType();
-//				System.out.println(qualifiedName);
-//				return true;
-//			}
-// 			
-			// visit Type declaration nodes
+			// COUNT ANNOTATION DECLARATIONS
+			public boolean visit(AnnotationTypeDeclaration node) {			
+				String qualifiedName = node.resolveBinding().getQualifiedName();
+				if (decDictionary.containsKey(qualifiedName)) {
+					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);	
+				}	
+				else {
+					decDictionary.put(qualifiedName, 1);
+				}
+				return true;
+			}
 			
+			// COUNT ENUMERATION DECLARATIONS
+			public boolean visit(EnumDeclaration node) {												
+				String qualifiedName = node.resolveBinding().getQualifiedName();
+				if (decDictionary.containsKey(qualifiedName)) {
+					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);	
+				}	
+				else {
+					decDictionary.put(qualifiedName, 1);
+				}
+				return true;
+			}
+		
+			// COUNT CLASS AND INTERFACE DECLARATIONS
 			public boolean visit(TypeDeclaration node) {
-				ITypeBinding myBinding = node.resolveBinding();
-				String qualifiedName = myBinding.getQualifiedName();
-//				if (inputType.equals(qualifiedName)) {
-//					declarations = declarations + 1;
-//				}
-//				decList.add(qualifiedName);
+				String qualifiedName = node.resolveBinding().getQualifiedName();
 				if (decDictionary.containsKey(qualifiedName)) {
-					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);
-				}
+					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);	
+				}	
 				else {
 					decDictionary.put(qualifiedName, 1);
 				}
 				return true;
 			}
 			
-			// visit Enum declaration nodes
-			public boolean visit(EnumDeclaration node) {
-				ITypeBinding myBinding = node.resolveBinding();
-				String qualifiedName = myBinding.getQualifiedName();
-//				if (inputType.equals(qualifiedName)) {
-//					declarations = declarations + 1;
-//				}
-//				decList.add(qualifiedName);
-				if (decDictionary.containsKey(qualifiedName)) {
-					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);
-				}
+			// COUNT NORMAL ANNOTATION TYPE REFERENCES 
+			public boolean visit (NormalAnnotation node) {
+				String qualifiedName = node.resolveTypeBinding().getQualifiedName();
+				if (refDictionary.containsKey(qualifiedName)) {
+					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				}	
 				else {
-					decDictionary.put(qualifiedName, 1);
+					refDictionary.put(qualifiedName, 1);
+				}
+				return false;
+			}
+			
+			// COUNT MARKER ANNOTATION TYPE REFERENCES 
+			public boolean visit (MarkerAnnotation node) {
+				String qualifiedName = node.resolveTypeBinding().getQualifiedName();
+				if (refDictionary.containsKey(qualifiedName)) {
+					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				}	
+				else {
+					refDictionary.put(qualifiedName, 1);
 				}
 				return true;
 			}
-			
-			// visit Annotation type nodes
-			public boolean visit(AnnotationTypeDeclaration node) {
-				ITypeBinding myBinding = node.resolveBinding();
-				String qualifiedName = myBinding.getQualifiedName();
-				System.out.println("Reference: "+qualifiedName);
-//				if (inputType.equals(qualifiedName)) {
-//					references = references + 1;
-//				}
-//				refList.add(qualifiedName);
+
+			// COUNT PRIMITIVE TYPE REFERENCES 
+			public boolean visit(PrimitiveType node) {	
+				String qualifiedName = node.resolveBinding().getQualifiedName();
 				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);
-				}
+					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				}	
 				else {
 					refDictionary.put(qualifiedName, 1);
 				}
 				return true;
 			}
 			
-			// visit Variable declaration statement nodes
-			public boolean visit(VariableDeclarationStatement node) {
-				Type t = node.getType();
-				ITypeBinding myBinding = t.resolveBinding();
-				String qualifiedName = myBinding.getQualifiedName();
-//				if (inputType.equals(qualifiedName)) {
-//					references = references + 1;
-//				}
-//				refList.add(qualifiedName);
+			// COUNT ALL OTHER TYPE REFERENCES 
+			public boolean visit(SimpleType node) { 
+				String qualifiedName = node.resolveBinding().getQualifiedName();
 				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);
-				}
+					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				}	
 				else {
 					refDictionary.put(qualifiedName, 1);
 				}
 				return true;
 			}
-			
-			// visit field declaration nodes
-			public boolean visit(FieldDeclaration node) {
-				Type t = node.getType();
-				ITypeBinding myBinding = t.resolveBinding();
-				String qualifiedName = myBinding.getQualifiedName();
-//				if (inputType.equals(qualifiedName)) {
-//					references = references + 1;
-//				}
-//				refList.add(qualifiedName);
-				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);
-				}
-				else {
-					refDictionary.put(qualifiedName, 1);
-				}
-				return true;
-			}
-			
-			// visit class instance creation nodes
-			public boolean visit(ClassInstanceCreation node) {
-				Type t = node.getType();
-				ITypeBinding myBinding = t.resolveBinding();
-				String qualifiedName = myBinding.getQualifiedName();
-//				if (inputType.equals(qualifiedName)) {
-//					references = references + 1;
-//				}
-//				refList.add(qualifiedName);
-				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);
-				}
-				else {
-					refDictionary.put(qualifiedName, 1);
-				}
-				return true;
-			}
-			
+		
 		});
 		
 	}
@@ -260,7 +269,7 @@ public class Iteration2 {
 	}
 
 	public static void setInputType(String inputType) {
-		Counter.inputType = inputType;
+		Iteration2.inputType = inputType;
 	}
 
 	public static int getDeclarations() {
@@ -268,7 +277,7 @@ public class Iteration2 {
 	}
 
 	public static void setDeclarations(int declarations) {
-		Counter.declarations = declarations;
+		Iteration2.declarations = declarations;
 	}
 
 	public static int getReferences() {
@@ -276,7 +285,7 @@ public class Iteration2 {
 	}
 
 	public static void setReferences(int references) {
-		Counter.references = references;
+		Iteration2.references = references;
 	}
 
 	public static String getInputDirectory() {
@@ -284,7 +293,7 @@ public class Iteration2 {
 	}
 	
 	public static void setInputDirectory(String inputDirectory) {
-		Counter.inputDirectory = inputDirectory;
+		Iteration2.inputDirectory = inputDirectory;
 	}
 	
 }
