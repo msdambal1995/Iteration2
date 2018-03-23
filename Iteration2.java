@@ -23,7 +23,7 @@ import org.eclipse.jdt.core.JavaCore;
  *    Input directory or JAR file should be provided as a command line argument
  *    This program only works with directories and JAR files
  * @author Robert Fiker and Hamzah Umar.
- * @version 3.0
+ * @version 4.0
  */
 public class Iteration2 {
 	
@@ -48,12 +48,13 @@ public class Iteration2 {
 		}
 		catch(FileNotFoundException fnfe) {
 			System.out.println("Sorry, pathname must indicate either an existing directory or an existing JAR file");
+			System.exit(0);
 		}
 		catch (IOException ioe){
 			System.out.println("Error occred while retreiving directory/jar file. Please check your input");
+			System.exit(0);
 		}
-		System.out.println("Declarations: "+decDictionary.toString());
-		System.out.println("References: "+refDictionary.toString());
+		printResults();
 	}
 	
 	/**
@@ -82,6 +83,9 @@ public class Iteration2 {
 	            	if (f.getName().endsWith(".java")) {
 	            		parse(readFileToString(f.getAbsolutePath()));
 	            	}
+	            	else if(f.getName().endsWith(".jar") || f.getName().endsWith(".zip")){
+	            		findFiles(f.getAbsolutePath());
+	            	}
 	            }
 	        } 
 		}
@@ -92,17 +96,22 @@ public class Iteration2 {
 		    Enumeration<? extends ZipEntry> entries = zipFile.entries();
 		    
 		    //make an ArrayList to store all .java zip entries
-		    ArrayList<ZipEntry> myArray = new ArrayList<ZipEntry>();
+		    ArrayList<ZipEntry> javaArray = new ArrayList<ZipEntry>();
+		    ArrayList<ZipEntry> JARandZIPArray = new ArrayList<ZipEntry>();
 		    while(entries.hasMoreElements()){
 		        ZipEntry entry = entries.nextElement();
 		        if (entry.getName().endsWith(".java")){
-		        	myArray.add(entry);
+		        	javaArray.add(entry);
+		        }
+		        else if (entry.getName().endsWith(".jar") || entry.getName().endsWith(".zip")) {
+		        	JARandZIPArray.add(entry);
 		        }
 		    }
 		    
-		    for (ZipEntry entry: myArray) {
+		    for (ZipEntry entry: javaArray) {
 				parse(readZipEntryToString(entry, zipFile));
 		    }
+		    //TODO: Deal with cases where zip/jar files are encountered within zip/jar files
 		}
 		//if not, print error message
 		else {
@@ -202,90 +211,164 @@ public class Iteration2 {
 			
 			// COUNT ANNOTATION DECLARATIONS
 			public boolean visit(AnnotationTypeDeclaration node) {			
-				String qualifiedName = node.resolveBinding().getQualifiedName();
-				if (decDictionary.containsKey(qualifiedName)) {
-					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);	
+				String name = node.resolveBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveBinding().getName();
+				}
+				if (decDictionary.containsKey(name)) {
+					decDictionary.put(name, decDictionary.get(name)+1);	
 				}	
 				else {
-					decDictionary.put(qualifiedName, 1);
+					decDictionary.put(name, 1);
 				}
 				return true;
 			}
 			
 			// COUNT ENUMERATION DECLARATIONS
 			public boolean visit(EnumDeclaration node) {												
-				String qualifiedName = node.resolveBinding().getQualifiedName();
-				if (decDictionary.containsKey(qualifiedName)) {
-					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);	
+				String name = node.resolveBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveBinding().getName();
+				}
+				if (decDictionary.containsKey(name)) {
+					decDictionary.put(name, decDictionary.get(name)+1);	
 				}	
 				else {
-					decDictionary.put(qualifiedName, 1);
+					decDictionary.put(name, 1);
 				}
 				return true;
 			}
 		
 			// COUNT CLASS AND INTERFACE DECLARATIONS
 			public boolean visit(TypeDeclaration node) {
-				String qualifiedName = node.resolveBinding().getQualifiedName();
-				if (decDictionary.containsKey(qualifiedName)) {
-					decDictionary.put(qualifiedName, decDictionary.get(qualifiedName)+1);	
+				String name = node.resolveBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveBinding().getName();
+				}
+				if (decDictionary.containsKey(name)) {
+					decDictionary.put(name, decDictionary.get(name)+1);	
 				}	
 				else {
-					decDictionary.put(qualifiedName, 1);
+					decDictionary.put(name, 1);
 				}
 				return true;
 			}
 			
 			// COUNT NORMAL ANNOTATION TYPE REFERENCES 
 			public boolean visit (NormalAnnotation node) {
-				String qualifiedName = node.resolveTypeBinding().getQualifiedName();
-				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				String name = node.resolveTypeBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveTypeBinding().getName();
+				}
+				if (refDictionary.containsKey(name)) {
+					refDictionary.put(name, refDictionary.get(name)+1);	
 				}	
 				else {
-					refDictionary.put(qualifiedName, 1);
+					refDictionary.put(name, 1);
 				}
 				return true;
 			}
 			
 			// COUNT MARKER ANNOTATION TYPE REFERENCES 
 			public boolean visit (MarkerAnnotation node) {
-				String qualifiedName = node.resolveTypeBinding().getQualifiedName();
-				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				String name = node.resolveTypeBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveTypeBinding().getName();
+				}
+				if (refDictionary.containsKey(name)) {
+					refDictionary.put(name, refDictionary.get(name)+1);	
 				}	
 				else {
-					refDictionary.put(qualifiedName, 1);
+					refDictionary.put(name, 1);
 				}
 				return true;
 			}
 
 			// COUNT PRIMITIVE TYPE REFERENCES 
 			public boolean visit(PrimitiveType node) {	
-				String qualifiedName = node.resolveBinding().getQualifiedName();
-				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				String name = node.resolveBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveBinding().getName();
+				}
+				//don't count references to "void"
+				if (name.equals("void")){
+					return true;
+				}
+				if (refDictionary.containsKey(name)) {
+					refDictionary.put(name, refDictionary.get(name)+1);	
 				}	
 				else {
-					refDictionary.put(qualifiedName, 1);
+					refDictionary.put(name, 1);
+				}
+				return true;
+			}
+			
+			// COUNT IMPORT REFERENCES
+			public boolean visit(ImportDeclaration node) {
+				String name = node.resolveBinding().getName();
+				if (name.equals("")) {
+					name = node.resolveBinding().getName();
+				}
+				if (refDictionary.containsKey(name)) {
+					refDictionary.put(name, refDictionary.get(name)+1);	
+				}	
+				else {
+					refDictionary.put(name, 1);
 				}
 				return true;
 			}
 			
 			// COUNT ALL OTHER TYPE REFERENCES 
 			public boolean visit(SimpleType node) { 
-				String qualifiedName = node.resolveBinding().getQualifiedName();
-				if (refDictionary.containsKey(qualifiedName)) {
-					refDictionary.put(qualifiedName, refDictionary.get(qualifiedName)+1);	
+				String name = node.resolveBinding().getQualifiedName();
+				if (name.equals("")) {
+					name = node.resolveBinding().getName();
+				}
+				if (refDictionary.containsKey(name)) {
+					refDictionary.put(name, refDictionary.get(name)+1);	
 				}	
 				else {
-					refDictionary.put(qualifiedName, 1);
+					refDictionary.put(name, 1);
 				}
 				return true;
 			}
 		
 		});
 		
+	}
+	
+	/**
+	 * Method which prints results after declarations and references have been counted
+	 * @param None
+	 * @return Nothing
+	 */
+	private static void printResults() {
+		//for all types that have at least 1 declaration, print declaration and reference count for said type
+		for (HashMap.Entry<String, Integer> dec: decDictionary.entrySet()) {
+			String name = dec.getKey();
+			int references = 0;
+			int declarations = dec.getValue();
+			for (HashMap.Entry<String, Integer> ref: refDictionary.entrySet()) {
+				if (ref.getKey().equals(name)) {
+					references = ref.getValue();
+				}
+			}
+			System.out.println(name+". Declarations found: "+declarations+"; references found: "+references);
+		}
+		outerLoop:
+		//for types with references but no declarations, print declaration and reference count for said type
+		for (HashMap.Entry<String, Integer> ref: refDictionary.entrySet()) {
+			String name = ref.getKey();
+			int references = ref.getValue();
+			int declarations = 0;
+			//checks to see if current key in refDictionary has any declarations. If so, continue to next key in refDictionary
+			for (HashMap.Entry<String, Integer> dec: decDictionary.entrySet()) {
+				if (dec.getKey().equals(name)) {
+					continue outerLoop;
+				}
+			}
+			System.out.println(name+". Declarations found: "+declarations+"; references found: "+references);
+		}
 	}
 	
 	// Encapsulation methods
