@@ -1,0 +1,114 @@
+package GroupIteration2;
+
+import static org.junit.Assert.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
+import org.eclipse.core.runtime.Assert;
+import org.junit.Test;
+
+public class Iteration2Test {
+	private static String BASEDIR = "C:\\Users\\msizz\\Downloads\\Desktop.jar";
+	private static String BASEDIR2 = "C:\\Users\\msizz\\OneDrive\\Desktop\\";
+
+//	@Test(expected = FileNotFoundException.class)
+//	public void nullPointerPath() throws IOException {
+//		String[] arguments = new String[1];
+//		arguments[0] = BASEDIR2 + "Desktop\\";
+//		Iteration2 It2 = new Iteration2();
+//		It2.main(arguments);
+//	}
+		
+	@Test
+	public void checkEmptyInput (){
+		Iteration2 It2 = new Iteration2();
+		assertTrue(It2.decDictionary.isEmpty());
+		
+	}
+	@Test
+	public void checkString() throws IOException
+	{
+		String[] arguments = new String[1];
+		arguments[0] = BASEDIR;
+		Iteration2 It2 = new Iteration2();
+		It2.resetRefDictionary();
+		It2.resetDecDictionary();
+		It2.main(arguments);
+		int stringCount = (Integer)(It2.refDictionary.get("java.lang.String"));
+		System.out.println(stringCount);
+		assertEquals (stringCount, 8);
+	}
+	
+	@Test
+	public void checkInt() throws IOException
+	{
+		String[] arguments = new String[1];
+		arguments[0] = BASEDIR;
+		Iteration2 It2 = new Iteration2();
+		It2.resetRefDictionary();
+		It2.resetDecDictionary();
+		It2.main(arguments);
+		int stringCount = (Integer)(It2.refDictionary.get("int"));
+		System.out.println(stringCount);
+		assertEquals (stringCount, 22);
+	}
+	
+	@Test
+	public void checkChar() throws IOException
+	{
+		String[] arguments = new String[1];
+		arguments[0] = BASEDIR;
+		Iteration2 It2 = new Iteration2();
+		It2.resetRefDictionary();
+		It2.resetDecDictionary();
+		It2.main(arguments);
+		int stringCount = (Integer)(It2.refDictionary.get("char"));
+		System.out.println(stringCount);
+		assertEquals (stringCount, 4);
+	}
+	
+	@Test
+	public void checkMaindotSomething() throws IOException
+	{
+		String[] arguments = new String[1];
+		arguments[0] = BASEDIR;
+		Iteration2 It2 = new Iteration2();
+		It2.resetRefDictionary();
+		It2.resetDecDictionary();
+		It2.main(arguments);
+		int stringCount = (Integer)(It2.decDictionary.get("Main.Something"));
+		System.out.println(stringCount);
+		assertEquals (stringCount, 2);
+	}
+	
+	
+//	@Test
+//	public void check() throws IOException
+//	{
+//		String[] arguments = new String[1];
+//		arguments[0] = BASEDIR;
+//		Iteration2 It2 = new Iteration2();
+//		It2.main(arguments);
+//		int stringCount = (Integer)(It2.refDictionary.get("java.lang.String"));
+//		System.out.println(stringCount);
+//		assertEquals (stringCount, 4);
+//	}
+	
+	@Test
+	public void checkParse()
+	{
+		Iteration2 It = new Iteration2();
+	
+	}
+	
+	
+	
+//	@Test
+//	public void checkSetInputDirectory()
+//	{
+//		Iteration2 it = new Interation2(BASEDIR);
+//		it.
+//	}
+	
+}
